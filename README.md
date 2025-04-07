@@ -1,6 +1,6 @@
-# HyperSlop MCP Server
+# Hyperslop MCP Server
 
-A basic MCP (Model Context Protocol) server implementation using FastMCP that provides access to the Gateway API.
+A basic MCP (Model Context Protocol) server implementation using FastMCP that provides access to a hyperslop gateway API.
 
 ## Features
 
@@ -92,42 +92,3 @@ This launches the MCP Inspector interface where you can:
 ### File Tree Operations
 
 - `read_file_tree`: Read the file tree structure from any node in the Hyperslop network. Returns only the structure (names, types, and paths) of files and directories, not the actual file contents.
-
-## Error Handling
-
-All gateway operations may return an error response in this format:
-```json
-{
-  "Error": {
-    "message": "Error description here"
-  }
-}
-```
-
-Common error scenarios:
-- Gateway client not configured
-- Invalid or missing API key
-- File or directory not found
-- Permission denied
-- Invalid request format
-
-## Testing
-
-The project includes a test script that verifies server functionality without needing a real MCP client. Run the tests with:
-  ```bash
-  python test_server.py
-  ```
-
-## Adding Custom Handlers
-
-You can add custom handlers in `main.py` using the FastMCP decorators:
-
-  ```python
-  @mcp.tool()
-  def custom_tool(param: str) -> str:
-      return f"Processing: {param}"
-
-  @mcp.resource("custom://{param}")
-  def custom_resource(param: str) -> str:
-      return f"Resource: {param}"
-  ``` 
