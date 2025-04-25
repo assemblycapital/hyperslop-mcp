@@ -12,6 +12,7 @@ import os
 import json
 from fastmcp import FastMCP, Context
 from gateway_client import GatewayClient, GatewayConfig
+from typing import Dict, Any
 
 # Configure logging with more detailed format
 logging.basicConfig(
@@ -71,7 +72,7 @@ def hyperslop_get_our_node_name() -> str:
 
 # File System Operations
 @mcp.tool()
-async def hyperslop_read_directory(node: str, path: str, ctx: Context) -> dict:
+async def hyperslop_read_directory(node: str, path: str, ctx: Context) -> Dict[str, Any]:
     """List contents of a directory on any node in the Hyperslop network.
     
     Args:
@@ -86,7 +87,7 @@ async def hyperslop_read_directory(node: str, path: str, ctx: Context) -> dict:
     return await gateway_client.read_directory(node, path)
 
 @mcp.tool()
-async def hyperslop_create_directory(node: str, path: str, ctx: Context) -> dict:
+async def hyperslop_create_directory(node: str, path: str, ctx: Context) -> Dict[str, Any]:
     """Create a new directory on your node.
     
     Args:
@@ -103,7 +104,7 @@ async def hyperslop_create_directory(node: str, path: str, ctx: Context) -> dict
     return await gateway_client.create_directory(node, path)
 
 @mcp.tool()
-async def hyperslop_delete_directory(node: str, path: str, ctx: Context) -> dict:
+async def hyperslop_delete_directory(node: str, path: str, ctx: Context) -> Dict[str, Any]:
     """Delete a directory and its contents from your node.
     
     Args:
@@ -120,29 +121,35 @@ async def hyperslop_delete_directory(node: str, path: str, ctx: Context) -> dict
     return await gateway_client.delete_directory(node, path)
 
 @mcp.tool()
-async def hyperslop_read_file(node: str, path: str, ctx: Context) -> dict:
-    """Read contents of a file from any node in the Hyperslop network.
+async def hyperslop_read_file(node: str, path: str, ctx: Context) -> Dict[str, Any]:
+    """Read contents of a text file from any node in the Hyperslop network.
     
     Args:
         node: The name of the node to read from. You can read from any node in the network.
               Use hyperslop_get_our_node_name() to get your node's name.
         path: The file path to read.
+    
+    Returns:
+        A dictionary containing either the file content or an error message
     """
     if not gateway_client:
         logger.error("Gateway client not configured - hyperslop_read_file called before initialization")
         return {"Error": {"message": "Gateway client not configured"}}
     ctx.info(f"Reading file: {path} on node {node}")
-    return await gateway_client.read_file(node, path)
+    try:
+        return await gateway_client.read_file(node, path)
+    except Exception as e:
+        return {"Error": {"message": str(e)}}
 
 @mcp.tool()
-async def hyperslop_create_file(node: str, path: str, content: str, ctx: Context) -> dict:
-    """Create a new file with content on your node.
+async def hyperslop_create_file(node: str, path: str, content: str, ctx: Context) -> Dict[str, Any]:
+    """Create a new text file with content on your node.
     
     Args:
         node: Must match your node name from api.json. You can only create files on your own node.
               Use hyperslop_get_our_node_name() to get your node's name.
         path: The file path to create.
-        content: The content to write to the new file.
+        content: The text content to write to the new file.
     """
     if not gateway_client:
         logger.error("Gateway client not configured - hyperslop_create_file called before initialization")
@@ -153,14 +160,14 @@ async def hyperslop_create_file(node: str, path: str, content: str, ctx: Context
     return await gateway_client.create_file(node, path, content)
 
 @mcp.tool()
-async def hyperslop_write_file(node: str, path: str, content: str, ctx: Context) -> dict:
-    """Write content to an existing file on your node.
+async def hyperslop_write_file(node: str, path: str, content: str, ctx: Context) -> Dict[str, Any]:
+    """Write text content to an existing file on your node.
     
     Args:
         node: Must match your node name from api.json. You can only write to files on your own node.
               Use hyperslop_get_our_node_name() to get your node's name.
         path: The file path to write to.
-        content: The content to write to the file.
+        content: The text content to write to the file.
     """
     if not gateway_client:
         logger.error("Gateway client not configured - hyperslop_write_file called before initialization")
@@ -171,7 +178,7 @@ async def hyperslop_write_file(node: str, path: str, content: str, ctx: Context)
     return await gateway_client.write_file(node, path, content)
 
 @mcp.tool()
-async def hyperslop_delete_file(node: str, path: str, ctx: Context) -> dict:
+async def hyperslop_delete_file(node: str, path: str, ctx: Context) -> Dict[str, Any]:
     """Delete a file from your node.
     
     Args:
@@ -188,7 +195,7 @@ async def hyperslop_delete_file(node: str, path: str, ctx: Context) -> dict:
     return await gateway_client.delete_file(node, path)
 
 @mcp.tool()
-async def hyperslop_read_file_tree(node: str, ctx: Context) -> dict:
+async def hyperslop_read_file_tree(node: str, ctx: Context) -> Dict[str, Any]:
     """Read the file tree structure from any node in the Hyperslop network.
     This returns only the structure (names, types, and paths) of files and directories,
     not the actual file contents.

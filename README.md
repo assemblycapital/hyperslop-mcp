@@ -5,11 +5,13 @@ A basic MCP (Model Context Protocol) server implementation using FastMCP that pr
 ## Features
 
 - Gateway API Integration:
-  - File System Operations (read, create, write, delete files and directories)
+  - Text File Operations (read, create, write, delete text files)
+  - Directory Operations (create, read, delete directories)
   - File Tree Operations (read entire file structure)
   - Configurable via api.json file
 - Basic MCP tools and resources:
-  - File system operations through Gateway API
+  - Text file operations through Gateway API
+  - Directory operations through Gateway API
   - File tree operations through Gateway API
 - Logging for all operations
 - Progress reporting for long-running operations
@@ -84,11 +86,16 @@ This launches the MCP Inspector interface where you can:
 - `read_directory`: List contents of a directory on any node in the Hyperslop network
 - `create_directory`: Create a new directory on your node
 - `delete_directory`: Delete a directory and its contents from your node
-- `read_file`: Read contents of a file from any node in the Hyperslop network
-- `create_file`: Create a new file with content on your node
-- `write_file`: Write content to an existing file on your node
+- `read_file`: Read contents of a text file from any node in the Hyperslop network
+- `create_file`: Create a new text file with content on your node
+- `write_file`: Write text content to an existing file on your node
 - `delete_file`: Delete a file from your node
 
 ### File Tree Operations
 
 - `read_file_tree`: Read the file tree structure from any node in the Hyperslop network. Returns only the structure (names, types, and paths) of files and directories, not the actual file contents.
+
+## Limitations
+
+- This MCP server only handles text files. For binary files or large files, use the HyperSlop app directly.
+- All file operations are performed through the Gateway API using the credentials in api.json.
