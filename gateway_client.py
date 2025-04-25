@@ -113,24 +113,14 @@ class GatewayClient:
         """Read a text file's contents using the read endpoint"""
         return await self._make_read_request(node, path)
 
-    async def create_file(self, node: str, path: str, content: str) -> Dict[str, Any]:
-        request = {
-            "node": node,
-            "request": {
-                "request_type": "CreateFile",
-                "path": path,
-                "content": content
-            }
-        }
-        return await self._make_rpc_request(request)
-
     async def write_file(self, node: str, path: str, content: str) -> Dict[str, Any]:
+        """Write content to a file (creates if doesn't exist)"""
         request = {
             "node": node,
             "request": {
                 "request_type": "WriteFile",
                 "path": path,
-                "content": content
+                "content": content if content is not None else ""
             }
         }
         return await self._make_rpc_request(request)

@@ -4,7 +4,7 @@ Hyperslop MCP Server
 This server provides access to the Hyperslop distributed file system network.
 Each node in the network has its own filesystem, and nodes can access each other's files.
 Your node name is configured in api.json and determines which filesystem you can modify.
-Use the hyperslop_get_our_node_name tool to discover your node's name.
+Use the hyperslop_network_read tool with operation="get_node_name" to discover your node's name.
 """
 
 import logging
@@ -12,7 +12,7 @@ import os
 import json
 from fastmcp import FastMCP, Context
 from gateway_client import GatewayClient, GatewayConfig
-from typing import Dict, Any
+from typing import Dict, Any, Literal
 
 # Configure logging with more detailed format
 logging.basicConfig(
@@ -60,152 +60,108 @@ logger.info("Default MCP port is 8815 (standard MCP port)")
 logger.info("Access the server at: http://localhost:8815")
 
 @mcp.tool()
-def hyperslop_get_our_node_name() -> str:
-    """Get your node's name as configured in api.json.
-    This is your identity in the Hyperslop network and determines which filesystem you can modify."""
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_get_our_node_name called before initialization")
-        return "No node configured"
-    node_name = gateway_client.get_node()
-    logger.info(f"Returning node name: {node_name}")
-    return node_name
-
-# File System Operations
-@mcp.tool()
-async def hyperslop_read_directory(node: str, path: str, ctx: Context) -> Dict[str, Any]:
-    """List contents of a directory on any node in the Hyperslop network.
+async def hyperslop_network_read(
+    operation: Literal["get_node_name", "read_directory", "read_file", "read_file_tree"],
+    node: str,
+    path: str = "",
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """Read operations on the Hyperslop network.
     
     Args:
+        operation: The type of read operation to perform:
+            - get_node_name: Get your node's name as configured in api.json
+            - read_directory: List contents of a directory
+            - read_file: Read contents of a text file
+            - read_file_tree: Read the entire file tree structure
         node: The name of the node to read from. You can read from any node in the network.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The directory path to list contents from.
+        path: The path to read from (not needed for get_node_name or read_file_tree)
+        ctx: The context object for logging and progress reporting
     """
     if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_read_directory called before initialization")
+        logger.error("Gateway client not configured")
         return {"Error": {"message": "Gateway client not configured"}}
-    ctx.info(f"Reading directory: {path} on node {node}")
-    return await gateway_client.read_directory(node, path)
+
+    if operation == "get_node_name":
+        node_name = gateway_client.get_node()
+        logger.info(f"Returning node name: {node_name}")
+        return {"NodeName": node_name}
+    
+    elif operation == "read_directory":
+        ctx.info(f"Reading directory: {path} on node {node}")
+        return await gateway_client.read_directory(node, path)
+    
+    elif operation == "read_file":
+        ctx.info(f"Reading file: {path} on node {node}")
+        try:
+            return await gateway_client.read_file(node, path)
+        except Exception as e:
+            return {"Error": {"message": str(e)}}
+    
+    elif operation == "read_file_tree":
+        ctx.info(f"Reading file tree from node {node}")
+        return await gateway_client.read_file_tree(node)
+    
+    return {"Error": {"message": f"Unknown operation: {operation}"}}
 
 @mcp.tool()
-async def hyperslop_create_directory(node: str, path: str, ctx: Context) -> Dict[str, Any]:
-    """Create a new directory on your node.
+async def hyperslop_network_write(
+    operation: Literal["create_directory", "delete_directory", "write_file", "delete_file"],
+    node: str,
+    path: str,
+    content: str = "",
+    ctx: Context = None
+) -> Dict[str, Any]:
+    """Write operations on the Hyperslop network.
     
     Args:
-        node: Must match your node name from api.json. You can only create directories on your own node.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The directory path to create.
+        operation: The type of write operation to perform:
+            - create_directory: Create a new directory
+            - delete_directory: Delete a directory and its contents
+            - write_file: Write content to a file (creates if doesn't exist)
+            - delete_file: Delete a file
+        node: Must match your node name from api.json. You can only write to your own node.
+        path: The path to write to
+        content: The text content to write (only for write_file operation)
+        ctx: The context object for logging and progress reporting
     """
+    # Debug logging
+    logger.info("Received write operation request:")
+    logger.info(f"Operation: {operation!r}")
+    logger.info(f"Node: {node!r}")
+    logger.info(f"Path: {path!r}")
+    logger.info(f"Content: {content!r}")  # !r will show quotes and escapes
+    logger.info(f"Content type: {type(content)}")
+    logger.info(f"Content length: {len(content) if content is not None else 'None'}")
+
     if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_create_directory called before initialization")
+        logger.error("Gateway client not configured")
         return {"Error": {"message": "Gateway client not configured"}}
+
+    # Verify node matches configured node for write operations
     if node != gateway_client.get_node():
-        return {"Error": {"message": "You can only create directories on your own node"}}
-    ctx.info(f"Creating directory: {path} on node {node}")
-    return await gateway_client.create_directory(node, path)
+        return {"Error": {"message": "You can only write to your own node"}}
 
-@mcp.tool()
-async def hyperslop_delete_directory(node: str, path: str, ctx: Context) -> Dict[str, Any]:
-    """Delete a directory and its contents from your node.
+    if operation == "create_directory":
+        ctx.info(f"Creating directory: {path} on node {node}")
+        return await gateway_client.create_directory(node, path)
     
-    Args:
-        node: Must match your node name from api.json. You can only delete directories on your own node.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The directory path to delete.
-    """
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_delete_directory called before initialization")
-        return {"Error": {"message": "Gateway client not configured"}}
-    if node != gateway_client.get_node():
-        return {"Error": {"message": "You can only delete directories on your own node"}}
-    ctx.info(f"Deleting directory: {path} on node {node}")
-    return await gateway_client.delete_directory(node, path)
-
-@mcp.tool()
-async def hyperslop_read_file(node: str, path: str, ctx: Context) -> Dict[str, Any]:
-    """Read contents of a text file from any node in the Hyperslop network.
+    elif operation == "delete_directory":
+        ctx.info(f"Deleting directory: {path} on node {node}")
+        return await gateway_client.delete_directory(node, path)
     
-    Args:
-        node: The name of the node to read from. You can read from any node in the network.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The file path to read.
+    elif operation == "write_file":
+        ctx.info(f"Writing to file: {path} on node {node}")
+        if content is None or content.strip() == "":  # More explicit check
+            logger.error("Content validation failed:")
+            logger.error(f"Content is None: {content is None}")
+            logger.error(f"Content stripped is empty: {content.strip() == '' if content is not None else 'N/A'}")
+            return {"Error": {"message": "No file content provided"}}
+        return await gateway_client.write_file(node, path, content)
     
-    Returns:
-        A dictionary containing either the file content or an error message
-    """
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_read_file called before initialization")
-        return {"Error": {"message": "Gateway client not configured"}}
-    ctx.info(f"Reading file: {path} on node {node}")
-    try:
-        return await gateway_client.read_file(node, path)
-    except Exception as e:
-        return {"Error": {"message": str(e)}}
-
-@mcp.tool()
-async def hyperslop_create_file(node: str, path: str, content: str, ctx: Context) -> Dict[str, Any]:
-    """Create a new text file with content on your node.
+    elif operation == "delete_file":
+        ctx.info(f"Deleting file: {path} on node {node}")
+        return await gateway_client.delete_file(node, path)
     
-    Args:
-        node: Must match your node name from api.json. You can only create files on your own node.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The file path to create.
-        content: The text content to write to the new file.
-    """
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_create_file called before initialization")
-        return {"Error": {"message": "Gateway client not configured"}}
-    if node != gateway_client.get_node():
-        return {"Error": {"message": "You can only create files on your own node"}}
-    ctx.info(f"Creating file: {path} on node {node}")
-    return await gateway_client.create_file(node, path, content)
-
-@mcp.tool()
-async def hyperslop_write_file(node: str, path: str, content: str, ctx: Context) -> Dict[str, Any]:
-    """Write text content to an existing file on your node.
+    return {"Error": {"message": f"Unknown operation: {operation}"}}
     
-    Args:
-        node: Must match your node name from api.json. You can only write to files on your own node.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The file path to write to.
-        content: The text content to write to the file.
-    """
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_write_file called before initialization")
-        return {"Error": {"message": "Gateway client not configured"}}
-    if node != gateway_client.get_node():
-        return {"Error": {"message": "You can only write to files on your own node"}}
-    ctx.info(f"Writing to file: {path} on node {node}")
-    return await gateway_client.write_file(node, path, content)
-
-@mcp.tool()
-async def hyperslop_delete_file(node: str, path: str, ctx: Context) -> Dict[str, Any]:
-    """Delete a file from your node.
-    
-    Args:
-        node: Must match your node name from api.json. You can only delete files on your own node.
-              Use hyperslop_get_our_node_name() to get your node's name.
-        path: The file path to delete.
-    """
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_delete_file called before initialization")
-        return {"Error": {"message": "Gateway client not configured"}}
-    if node != gateway_client.get_node():
-        return {"Error": {"message": "You can only delete files on your own node"}}
-    ctx.info(f"Deleting file: {path} on node {node}")
-    return await gateway_client.delete_file(node, path)
-
-@mcp.tool()
-async def hyperslop_read_file_tree(node: str, ctx: Context) -> Dict[str, Any]:
-    """Read the file tree structure from any node in the Hyperslop network.
-    This returns only the structure (names, types, and paths) of files and directories,
-    not the actual file contents.
-    
-    Args:
-        node: The name of the node to read from. You can read from any node in the network.
-              Use hyperslop_get_our_node_name() to get your node's name.
-    """
-    if not gateway_client:
-        logger.error("Gateway client not configured - hyperslop_read_file_tree called before initialization")
-        return {"Error": {"message": "Gateway client not configured"}}
-    ctx.info(f"Reading file tree from node {node}")
-    return await gateway_client.read_file_tree(node) 
