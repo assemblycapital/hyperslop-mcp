@@ -5,7 +5,7 @@ A basic MCP (Model Context Protocol) server implementation using FastMCP that pr
 ## Features
 
 - Gateway API Integration:
-  - Text File Operations (read, create, write, delete text files)
+  - Text File Operations (read, write, delete text files)
   - Directory Operations (create, read, delete directories)
   - File Tree Operations (read entire file structure)
   - Configurable via api.json file
@@ -77,23 +77,46 @@ This launches the MCP Inspector interface where you can:
 
 ## Available Tools
 
-### Node Information
+The server provides two main tools that handle all file system operations:
 
-- `get_our_node_name`: Get your node's name as configured in api.json. This is your identity in the Hyperslop network and determines which filesystem you can modify.
+### 1. hyperslop_network_read
 
-### File System Operations
+Read operations on the Hyperslop network. Available operations:
 
-- `read_directory`: List contents of a directory on any node in the Hyperslop network
+- `get_node_name`: Get your node's name as configured in api.json
+- `read_directory`: List contents of a directory on any node
+- `read_file`: Read contents of a text file from any node
+- `read_file_tree`: Read the entire file tree structure from any node
+
+Example request:
+```json
+{
+  "operation": "read_file",
+  "node": "fake.os",
+  "path": "example.txt"
+}
+```
+
+### 2. hyperslop_network_write
+
+Write operations on the Hyperslop network. Available operations:
+
 - `create_directory`: Create a new directory on your node
 - `delete_directory`: Delete a directory and its contents from your node
-- `read_file`: Read contents of a text file from any node in the Hyperslop network
-- `create_file`: Create a new text file with content on your node
-- `write_file`: Write text content to an existing file on your node
+- `write_file`: Write content to a file (creates if doesn't exist)
 - `delete_file`: Delete a file from your node
 
-### File Tree Operations
+Example request:
+```json
+{
+  "operation": "write_file",
+  "node": "fake.os",
+  "path": "example.txt",
+  "content": "Hello, world!"
+}
+```
 
-- `read_file_tree`: Read the file tree structure from any node in the Hyperslop network. Returns only the structure (names, types, and paths) of files and directories, not the actual file contents.
+Note: Write operations can only be performed on your own node (as configured in api.json).
 
 ## Limitations
 
